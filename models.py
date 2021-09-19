@@ -15,6 +15,13 @@ user_to_club = db.Table('user_club_association',
     db.Column('user_id', db.Integer, db.ForeignKey('user.id'), primary_key = True, nullable = False),
     db.Column('club_id', db.Integer, db.ForeignKey('club.id'), primary_key = True, nullable = False) # NOTE: club.id is a valid identifier because SQLite table names are case-insensitive
     )
+
+# favorites join table (User-Club)
+favorites = db.Table('user_club_favorites',
+    db.Column('user_id', db.Integer, db.ForeignKey('user.id'), primary_key = True, nullable = False),
+    db.Column('club_id', db.Integer, db.ForeignKey('club.id'), primary_key = True, nullable = False) # NOTE: club.id is a valid identifier because SQLite table names are case-insensitive
+    )
+
 class User(db.Model):
     id = db.Column(db.Integer, primary_key = True, nullable = False)
     username = db.Column(db.String(50), nullable = False, unique = True)
@@ -22,6 +29,7 @@ class User(db.Model):
     last_name = db.Column(db.Text)
     email = db.Column(db.Text)
     clubs = db.relationship("Club", secondary = user_to_club, lazy = 'subquery', back_populates = "members")
+    favorites = db.relationship("Club", secondary = favorites, lazy = 'subquery', back_populates = "favoriters")
 
 class Club(db.Model):
     id = db.Column(db.Integer, primary_key = True, nullable = False) 
@@ -29,10 +37,11 @@ class Club(db.Model):
     name = db.Column(db.String(200), nullable = False)
     description = db.Column(db.Text)
     members = db.relationship("User", secondary = user_to_club, lazy = 'subquery', back_populates = "clubs")
+    favoriters = db.relationship("User", secondary = favorites, lazy = 'subquery', back_populates = "favorites")
     tags = db.relationship("Tag", secondary = tag_to_club, lazy = 'subquery', back_populates = "clubs")
 
 
-class Tag(db.model):
+class Tag(db.Model):
     id = db.Column(db.Integer, primary_key = True, nullable = False)
     name = db.Column(db.String(100), nullable = False, unique = True)
     clubs =  db.relationship("Club", secondary = tag_to_club, lazy = 'subquery', back_populates = "tags") 
