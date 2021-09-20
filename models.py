@@ -27,6 +27,7 @@ class User(db.Model):
     username = db.Column(db.String(50), nullable = False, unique = True)
     first_name = db.Column(db.Text)
     last_name = db.Column(db.Text)
+    password = db.Column(db.String(256)) # Passwords are SHA-256 encrypted
     email = db.Column(db.Text)
     clubs = db.relationship("Club", secondary = user_to_club, lazy = 'subquery', back_populates = "members")
     favorites = db.relationship("Club", secondary = favorites, lazy = 'subquery', back_populates = "favoriters")

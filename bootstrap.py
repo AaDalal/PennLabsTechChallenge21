@@ -1,10 +1,11 @@
 import os
 import json
 from app import db, DB_FILE
+from werkzeug.security import generate_password_hash
 
 def create_user():
     from models import User
-    josh = User(username = 'josh', first_name = 'josh', last_name = 'peck', email = 'joshpeck@goosgle.co')
+    josh = User(username = 'josh', first_name = 'josh', last_name = 'peck', email = 'joshpeck@goosgle.co', password =  generate_password_hash('password!'))
     db.session.add(josh)
     db.session.commit()
 

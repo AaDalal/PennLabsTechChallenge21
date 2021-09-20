@@ -15,6 +15,9 @@ from models import *
 def main():
     return "Welcome to Penn Club Review!"
 
+import auth
+app.register_blueprint(auth.bp)
+
 # NOTE: see api.py for the blueprint that replaced this view
 import api
 app.register_blueprint(api.bp)
