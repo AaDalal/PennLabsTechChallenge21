@@ -1,24 +1,22 @@
-import functools
-
 from flask import (
-    Blueprint, json, jsonify, flash, g, redirect, request, session, url_for, abort
+    Blueprint, jsonify, redirect, request, url_for, abort, g, Response
 )
 
 from flask_sqlalchemy import SQLAlchemy
+from werkzeug.security import check_password_hash, generate_password_hash
 
 from app import db
 
-from auth import login, login_required
+from auth import login_required
 
 bp = Blueprint('api', __name__, url_prefix='/api')
-
 
 def dictify_user(user : object):
     user = user.__dict__
     user.pop('_sa_instance_state')
     
-    # Remove email so it remains hidden
-    user.pop('email')
+    # Remove password hash so it remains hidden
+    user.pop('password')
 
     # Get the favorite clubs and return their hypermedia links
     favorites = user.pop('favorites')
@@ -60,7 +58,7 @@ def clubs_search(search_string):
     
     return jsonify_clubs(clubs)
 
-@bp.route('/users/<username>')
+@bp.route('/users/<username>', methods = ("GET",))
 def users(username):
     # FIXME: circular imports mean I need to import from within a function
     from models import User
@@ -70,6 +68,35 @@ def users(username):
     user = User.query.filter_by(username = username).first()
     user = dictify_user(user)
     return jsonify(user)
+
+@bp.route('/users/<username>', methods = ("PUT",))
+@login_required
+def update_user(username):
+    from models import User
+    if not username:
+        return User.query.all()
+
+    user = User.query.filter_by(username = username).first()
+    if g.user == user:
+        # FIXME: This is kind of (very) inelegant. Replace with helper function or loop through each json values
+        if request.json.get('first_name') is not None: 
+            user.first_name = request.json.get('first_name')
+        if request.json.get('last_name') is not None:
+            user.last_name = request.json.get('last_name')
+        if request.json.get('email') is not None:
+            user.email = request.json.get('email')
+        if request.json.get('curr_password') is not None and request.json.get('new_password'):
+            if check_password_hash(user.password, request.json.get('curr_password')):
+                user.password = generate_password_hash(request.json.get('new_password'))
+            else:
+                return Response('curr_password does not match your current password', status = 401)
+
+        db.session.add(user)
+        db.session.commit()
+    else:
+        return Response('You need to be logged in as the user you are trying to update', status = 401)
+
+    return redirect(url_for('api.users', username = username))
 
 @bp.route('/clubs', methods = ("GET",))
 def get_clubs():
@@ -81,15 +108,16 @@ def get_clubs():
     clubs = Club.query.all()
     return jsonify_clubs(clubs)
 
-@login_required
 @bp.route('/clubs', methods = ("POST",))
-def create_club():
-    from bootstrap import create_club
+def create_clubs():
+    from utils import create_club
     if request.json:
-        new_club = create_club(request.json)
+        create_club(request.json)
+    elif request.form:
+        create_club(dict(request.form))
     else:
-        new_club = create_club(dict(request.form))
-    return redirect(url_for('api.get_clubs'))
+        abort(204) # No content if it is in neither form nor json request
+    return redirect(url_for('api.get_clubs'), 201) # TODO: add header line with location to created item
 
 @bp.route('/clubs/<code>', methods = ("GET",))
 def get_specific_club(code):
@@ -100,8 +128,8 @@ def get_specific_club(code):
 
     return jsonify(dictify_club(club))
 
-@login_required
 @bp.route('/clubs/<code>', methods = ("PUT",))
+@login_required
 def update_specific_club(code):
     from models import Club
     club = Club.query.filter_by(code = code).first()
@@ -122,9 +150,9 @@ def update_specific_club(code):
         club.tags[:] = []
 
         # Create any new tags or get existing ones and add to the club
-        from bootstrap import create_tag
+        from utils import create_or_return_tag
         for tag_name in request.json.get('tags'):
-            tag = create_tag(tag_name)
+            tag = create_or_return_tag(tag_name)
             club.append(tag) # NOTE: Check the behavior is valid if tag-club association already exists
     db.session.add(club)
     db.session.commit()
@@ -149,8 +177,7 @@ def favorites(username, club_code):
     club = Club.query.filter_by(code = club_code).first() 
 
     if request.method == 'PUT':
-        user.favorites.append(club) # NOTE: need to make sure you cannot double favorite (you should not be able to based on sqlalchemy)
-        db.session.add(user)
+        user.favorites.append(club) # NOTE: users cannot "double-favorite" a club
         db.session.commit()
     elif request.method == 'DELETE':
         if club in user.favorites:
@@ -158,4 +185,22 @@ def favorites(username, club_code):
         db.session.add(user)
         db.session.commit()
 
-    return jsonify(club in user.favorites)
+    return jsonify(club in user.favorites) # Jsonify a boolean representing if it has been favorited
+
+@bp.route('/users/<username>/joins/<club_code>', methods = ('GET', 'PUT', 'DELETE'))
+def joins(username, club_code):
+    from models import User, Club
+    user = User.query.filter_by(username = username).first()
+    club = Club.query.filter_by(code = club_code).first() 
+
+    if request.method == 'PUT':
+        request.json.get('membership_type')
+        user.clubs.append(club) # NOTE: users cannot "double-favorite" a club
+        db.session.commit()
+    elif request.method == 'DELETE':
+        if club in user.favorites:
+            user.clubs.remove(club)
+        db.session.add(user)
+        db.session.commit()
+
+    return jsonify(club in user.favorites) # Jsonify a boolean representing if it has been favorited

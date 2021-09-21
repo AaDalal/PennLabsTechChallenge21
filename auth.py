@@ -2,7 +2,7 @@ import functools
 from logging import error
 
 from flask import (
-    Blueprint, flash, g, redirect, render_template, request, session, url_for, abort
+    Blueprint, g, redirect, request, session, url_for, abort, Response
 )
 
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -24,11 +24,11 @@ def register():
         last_name = request.form['last_name']
         email = request.form['email']
 
-        # Address error
+        # Address errors
         if not username:
             return "Username is required"
         elif not password:
-            return "Password is required"
+            return Response("Password is required", status = "")  
         elif User.query.filter_by(username = username).first() is not None:
             return f"User {username} is already registered"
         
@@ -52,7 +52,7 @@ def login():
         username = request.form['username']
         password = request.form['password']
 
-        user = User.query.filterby(username = username).first()
+        user = User.query.filter_by(username = username).first()
 
         if user is None or not check_password_hash(user.password, password):
             return "Incorrect username or password"
@@ -60,9 +60,9 @@ def login():
         session.clear()
         session['user_id'] = user.id
     
-        return redirect(url_for('index'))    
+        return redirect(url_for('main'))    
 
-    return "Send a post request with your username and password"
+    return f'Visit {url_for("auth.login")} and send POST request with a form data body (hint: "username" is "josh" and "password" is "password!"'
 
 
 @bp.before_app_request
@@ -73,20 +73,17 @@ def load_logged_in_user():
     if user_id is None:
         g.user = None
     else:
-        print(user_id)
-        print(User.query.filter_by(id = user_id).first())
         g.user = User.query.filter_by(id = user_id).first()
 
 @bp.route('/logout')
 def logout():
     session.clear()
-    return redirect(url_for('index'))
+    return redirect(url_for('main'))
 
 def login_required(view):
     @functools.wraps(view)
     def wrapped_view(**kwargs):
-        print('hello')
         if g.user is None:
-            return abort(401)
+            return Response(f'You need to login. Visit {url_for("auth.login")} and send POST request with a form data body (hint: "username" is "josh" and "password" is "password!"', status = 401)
         return view(**kwargs)
     return wrapped_view

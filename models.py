@@ -13,13 +13,13 @@ tag_to_club = db.Table('tag_club_association',
 # User-club join table
 user_to_club = db.Table('user_club_association',
     db.Column('user_id', db.Integer, db.ForeignKey('user.id'), primary_key = True, nullable = False),
-    db.Column('club_id', db.Integer, db.ForeignKey('club.id'), primary_key = True, nullable = False) # NOTE: club.id is a valid identifier because SQLite table names are case-insensitive
+    db.Column('club_id', db.Integer, db.ForeignKey('club.id'), primary_key = True, nullable = False)
     )
 
 # favorites join table (User-Club)
 favorites = db.Table('user_club_favorites',
     db.Column('user_id', db.Integer, db.ForeignKey('user.id'), primary_key = True, nullable = False),
-    db.Column('club_id', db.Integer, db.ForeignKey('club.id'), primary_key = True, nullable = False) # NOTE: club.id is a valid identifier because SQLite table names are case-insensitive
+    db.Column('club_id', db.Integer, db.ForeignKey('club.id'), primary_key = True, nullable = False)
     )
 
 class User(db.Model):
@@ -27,7 +27,7 @@ class User(db.Model):
     username = db.Column(db.String(50), nullable = False, unique = True)
     first_name = db.Column(db.Text)
     last_name = db.Column(db.Text)
-    password = db.Column(db.String(256)) # Passwords are SHA-256 encrypted
+    password = db.Column(db.String(100), nullable = False) # Passwords are SHA-256 encrypted
     email = db.Column(db.Text)
     clubs = db.relationship("Club", secondary = user_to_club, lazy = 'subquery', back_populates = "members")
     favorites = db.relationship("Club", secondary = favorites, lazy = 'subquery', back_populates = "favoriters")

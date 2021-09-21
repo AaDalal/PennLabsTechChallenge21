@@ -2,9 +2,7 @@
 
 ## Documentation
 
-### Data Model
-
-#### 
+See [this Notion](https://decorous-singer-50d.notion.site/PennLabs-Backend-Tech-Challenge-Docs-Aagam-Dalal-a73fd2bc26ef4c3f98cfb568c9c1f1b5) for the docs (they're also included as PDF)
 
 ## Installation
 
